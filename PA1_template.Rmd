@@ -1,25 +1,86 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Personal Activity Monitoring Analysis"
+author: "Dhanush"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+library(ggplot2)
+library(lattice)
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## Loading and Preprocessing the Data
 
+```{r load_data}
+# Load the dataset
+data <- read.csv("activity.csv", stringsAsFactors = FALSE)
+data$date <- as.Date(data$date, format="%Y-%m-%d")
+```
 
+## Total Number of Steps per Day
 
-## What is mean total number of steps taken per day?
+```{r total_steps_per_day}
+# Calculate total steps per day
+total_steps <- aggregate(steps ~ date, data, sum, na.rm = TRUE)
 
+# Plot histogram
+hist(total_steps$steps, main="Total Steps per Day", xlab="Steps", col="blue", breaks=20)
 
+# Calculate mean and median
+mean_steps <- mean(total_steps$steps, na.rm=TRUE)
+median_steps <- median(total_steps$steps, na.rm=TRUE)
 
-## What is the average daily activity pattern?
+mean_steps
+median_steps
+```
 
+## Average Daily Activity Pattern
 
+```{r daily_activity_pattern}
+avg_steps_interval <- aggregate(steps ~ interval, data, mean, na.rm=TRUE)
 
-## Imputing missing values
+# Plot time series
+plot(avg_steps_interval$interval, avg_steps_interval$steps, type="l", col="blue", 
+     main="Average Steps per 5-Minute Interval", xlab="Interval", ylab="Average Steps")
 
+# Find the interval with max average steps
+max_interval <- avg_steps_interval[which.max(avg_steps_interval$steps), ]
+max_interval
+```
 
+## Imputing Missing Values
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r missing_values}
+# Count missing values
+missing_count <- sum(is.na(data$steps))
+missing_count
+
+# Impute missing values using mean for that interval
+imputed_data <- data
+imputed_data$steps[is.na(imputed_data$steps)] <- 
+  ave(data$steps, data$interval, FUN=function(x) mean(x, na.rm=TRUE))[is.na(data$steps)]
+
+# Plot histogram after imputation
+total_steps_imputed <- aggregate(steps ~ date, imputed_data, sum)
+hist(total_steps_imputed$steps, main="Total Steps per Day (Imputed)", 
+     xlab="Steps", col="green", breaks=20)
+```
+
+## Weekday vs. Weekend Activity Patterns
+
+```{r weekday_weekend}
+# Create a factor variable for weekday vs. weekend
+imputed_data$day_type <- ifelse(weekdays(imputed_data$date) %in% c("Saturday", "Sunday"), 
+                                "Weekend", "Weekday")
+
+# Aggregate data
+avg_steps_day_type <- aggregate(steps ~ interval + day_type, imputed_data, mean)
+
+# Plot panel
+xyplot(steps ~ interval | day_type, data=avg_steps_day_type, type="l", 
+       layout=c(1,2), col="blue", xlab="Interval", ylab="Steps")
+```
+
+## Conclusion
+This analysis examined personal activity monitoring data, showing daily step patterns, missing value imputation effects, and differences between weekday and weekend activity.
